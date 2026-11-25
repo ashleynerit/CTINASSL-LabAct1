@@ -4,7 +4,8 @@ import {
   Navigate,
   Route,
   Routes,
-  useLocation
+  useLocation,
+  useNavigate
 } from "react-router-dom";
 import { AdminNavbar, Navbar } from "./components/Navbar";
 import { AuthProvider, useAuth } from "./Context/AuthContext";
@@ -40,6 +41,7 @@ function AppLayout() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [dataError, setDataError] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
 
   const refreshProducts = useCallback(async () => {
     try {
@@ -109,7 +111,9 @@ function AppLayout() {
   }, [user]);
 
   const handleLogout = () => {
-    logout()
+    const logoutRequest = logout();
+    navigate("/login", { replace: true });
+    logoutRequest
       .then(() => setOrders([]))
       .catch((error) => window.alert(error.message));
   };

@@ -50,9 +50,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await apiRequest("/api/auth/logout", { method: "POST" });
     setUser(null);
     setAuthError("");
+    await apiRequest("/api/auth/logout", { method: "POST" });
   };
 
   return (

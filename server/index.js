@@ -372,6 +372,7 @@ app.post("/api/auth/signup", asyncRoute(async (request, response) => {
   }
 }));
 
+//user info route
 app.get("/api/auth/me", asyncRoute(async (request, response) => {
   if (!request.session.userId || !ObjectId.isValid(request.session.userId)) {
     return response.json({ user: null });
