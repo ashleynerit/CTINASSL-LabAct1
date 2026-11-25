@@ -1,3 +1,5 @@
+import as1Image from "./product_images/as1.png";
+
 export const bookSeries = [
   "Alfanta Series",
   "Alfanta Side Stories",
@@ -10,41 +12,110 @@ export const bookSeries = [
   "Stand Alones"
 ];
 
+export const seriesIdSuffixes = {
+  "Alfanta Series": "AS",
+  "Alfanta Side Stories": "SIDE",
+  "Eleazar Series": "ES",
+  "Venganzara Series": "VS",
+  "Teenage Dream Series": "TDS",
+  "Casa Maria Series": "CMS",
+  "Days of Yore": "DOY",
+  "Wonder Trilogy": "TRI",
+  "Stand Alones": "SA"
+};
+
 export const UNASSIGNED_SERIES = "Unassigned";
+
+export const createProductId = (category, series) => {
+  const id = Date.now();
+  const suffix = category === "Books" ? seriesIdSuffixes[series] : null;
+
+  return suffix ? `${suffix}-${id}` : id;
+};
+
+export const getProductIdLabel = (product) => {
+  const suffix = seriesIdSuffixes[product.series];
+  const id = String(product.id);
+
+  if (product.category !== "Books" || !suffix || id.startsWith(`${suffix}-`)) {
+    return id;
+  }
+
+  return `${suffix}-${id}`;
+};
 
 export const initialProducts = [
   {
-    id: 1,
-    name: "Agnified Book Collection",
+    id: "AS-01",
+    name: "Tears by the Moonlight",
     category: "Books",
-    series: UNASSIGNED_SERIES,
-    price: 450,
-    stock: 20,
-    image: "https://placehold.co/400x500/F5EED8/497510?text=AGNIFIED+BOOK"
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as1Image
   },
   {
-    id: 2,
-    name: "The Author's Journal",
-    category: "Merchandise",
-    price: 250,
-    stock: 30,
-    image: "https://placehold.co/400x500/F5EED8/497510?text=JOURNAL"
-  },
-  {
-    id: 3,
-    name: "Agnified Special Edition",
+    id: "AS-02",
+    name: "Tangled under the Stars",
     category: "Books",
-    series: UNASSIGNED_SERIES,
-    price: 550,
-    stock: 15,
-    image: "https://placehold.co/400x500/F5EED8/497510?text=SPECIAL+EDITION"
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as2Image
   },
   {
-    id: 4,
-    name: "Agnified Tote Bag",
-    category: "Merchandise",
-    price: 180,
-    stock: 25,
-    image: "https://placehold.co/400x500/F5EED8/497510?text=TOTE+BAG"
-  }
+    id: "AS-03",
+    name: "Taking over the Storm",
+    category: "Books",
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as3Image
+  },
+  {
+    id: "AS-04",
+    name: "Touches of Cold Love",
+    category: "Books",
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as4Image
+  },
+  {
+    id: "AS-05",
+    name: "Thorns within the Shadow",
+    category: "Books",
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as5Image
+  },
+  {
+    id: "AS-06",
+    name: "Tilted Rays of Sunshine",
+    category: "Books",
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as6Image
+  },
+  {
+    id: "AS-07",
+    name: "Trails of Wilted Flowers",
+    category: "Books",
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as7Image
+  },
+  {
+    id: "AS-08",
+    name: "Tomorrow beneath the Clouds",
+    category: "Books",
+    series: "Alfanta Series",
+    price: 800,
+    stock: 100,
+    image: as8Image
+  },
+  
 ];

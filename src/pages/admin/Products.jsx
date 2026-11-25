@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { bookSeries, UNASSIGNED_SERIES } from "../../Data/products";
+import {
+  bookSeries,
+  createProductId,
+  getProductIdLabel,
+  UNASSIGNED_SERIES
+} from "../../Data/products";
 
 export default function AdminProducts({ products, setProducts }) {
   const [name, setName] = useState("");
@@ -12,7 +17,7 @@ export default function AdminProducts({ products, setProducts }) {
     event.preventDefault();
 
     const newProduct = {
-      id: Date.now(),
+      id: createProductId(category, series),
       name,
       price: Number(price),
       stock: Number(stock),
@@ -82,6 +87,7 @@ export default function AdminProducts({ products, setProducts }) {
 
       {products.map((product) => (
         <div className="order-row" key={product.id}>
+          <span>ID: {getProductIdLabel(product)}</span>
           <span>{product.name}</span>
           <span>{product.category}</span>
           {product.category === "Books" && (

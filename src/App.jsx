@@ -54,6 +54,8 @@ import {
 
 import { initialProducts } from "./Data/products.js";
 
+const AS1_PRODUCT_MIGRATION_KEY = "products-seed-as-01-applied";
+
 // =====================================
 // GLOBAL CSS
 // =====================================
@@ -76,9 +78,26 @@ function AppLayout() {
 
     const savedProducts = localStorage.getItem("products");
 
-    return savedProducts
-      ? JSON.parse(savedProducts)
-      : initialProducts;
+    if (!savedProducts) {
+      return initialProducts;
+    }
+
+    const savedProductList = JSON.parse(savedProducts);
+    const migrationApplied =
+      localStorage.getItem(AS1_PRODUCT_MIGRATION_KEY) === "true";
+
+    if (migrationApplied) {
+      return savedProductList;
+    }
+
+    const as1Book = initialProducts.find((product) => product.id === "AS-01");
+    const alreadyAdded = savedProductList.some(
+      (product) => product.id === "AS-01"
+    );
+
+    return as1Book && !alreadyAdded
+      ? [...savedProductList, as1Book]
+      : savedProductList;
 
   });
 
@@ -89,6 +108,7 @@ function AppLayout() {
       "products",
       JSON.stringify(products)
     );
+    localStorage.setItem(AS1_PRODUCT_MIGRATION_KEY, "true");
 
   }, [products]);
 
