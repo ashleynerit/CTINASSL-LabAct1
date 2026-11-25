@@ -438,6 +438,35 @@ app.get("/api/products", asyncRoute(async (request, response) => {
   response.json({ products: products.map(serializeProduct) });
 }));
 
+app.get("/api/products/trending", asyncRoute(async (request, response) => {
+  const rankings = await database.collection("orders").aggregate([
+    { $match: { status: { $ne: "Cancelled" } } },
+    { $unwind: "$items" },
+    { $match: { "items.category": "Books" } },
+    {
+      $group: {
+        _id: "$items.id",
+        unitsSold: { $sum: "$items.quantity" }
+      }
+    }
+  ]).toArray();
+  const unitsByProduct = new Map(
+    rankings.map((ranking) => [String(ranking._id), Number(ranking.unitsSold)])
+  );
+  const compareIds = (first, second) =>
+    String(first).localeCompare(String(second), undefined, { numeric: true });
+  const products = await database.collection("products")
+    .find({ category: "Books", stock: { $gt: 0 } })
+    .toArray();
+
+  products.sort((first, second) =>
+    (unitsByProduct.get(String(second._id)) || 0) -
+      (unitsByProduct.get(String(first._id)) || 0) ||
+    compareIds(first._id, second._id)
+  );
+  response.json({ products: products.slice(0, 3).map(serializeProduct) });
+}));
+
 app.get("/api/products/:id/image", asyncRoute(async (request, response) => {
   const product = await database.collection("products").findOne(
     { _id: request.params.id },

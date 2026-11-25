@@ -41,7 +41,10 @@ export function Navbar({ cartCount, user, logout }) {
 export function AdminNavbar({ logout }) {
   return (
     <nav className="navbar admin-nav">
-      <Link to="/admin" className="logo">AGNIFIED. ADMIN</Link>
+      <Link to="/admin" className="logo" aria-label="Admin dashboard">
+        <img className="navbar-logo-icon" src="/images/icon.png" alt="" />
+        <span>ADMIN</span>
+      </Link>
       <div className="nav-links">
         <NavLink to="/admin" end>Dashboard</NavLink>
         <NavLink to="/admin/orders">Orders</NavLink>

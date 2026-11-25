@@ -35,6 +35,7 @@ function AppLayout() {
     cartError
   } = useCart();
   const [products, setProducts] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [dataError, setDataError] = useState("");
@@ -66,6 +67,21 @@ function AppLayout() {
       })
       .finally(() => {
         if (active) setProductsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/api/products/trending")
+      .then((result) => {
+        if (active) setTrendingProducts(result.products);
+      })
+      .catch((error) => {
+        if (active) setDataError(error.message);
       });
 
     return () => {
@@ -131,7 +147,16 @@ function AppLayout() {
           </p>
         )}
         <Routes>
-          <Route path="/" element={<Home products={products} />} />
+          <Route
+            path="/"
+            element={
+              <Home
+                products={products}
+                trendingProducts={trendingProducts}
+                user={user}
+              />
+            }
+          />
           <Route path="/store" element={<Store products={products} addToCart={addToCart} />} />
           <Route path="/about" element={<About />} />
           <Route
