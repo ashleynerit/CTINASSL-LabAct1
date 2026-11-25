@@ -7,10 +7,10 @@ export default function Home({ products }) {
     <main>
       <section className="hero">
         <div className="hero-content">
-          <p className="accent">WELCOME TO THE OFFICIAL STORE</p>
-          <h1>Stories worth<br />keeping.</h1>
+          <p className="accent">Hello, User!</p>
+          <h1>Where stories<br />run wild.</h1>
           <p>
-            Discover the world of Agnified through books,
+            Discover the world of Nouvaunde through books,
             exclusive merchandise, and meaningful collections.
           </p>
           <Link to="/store" className="primary-btn">
@@ -40,15 +40,6 @@ export default function Home({ products }) {
         </div>
       </section>
 
-      <section className="about-banner">
-        <p className="accent">MORE THAN JUST A BOOKSTORE</p>
-        <h2>A world created by Agnified.</h2>
-        <p>
-          Explore the stories, creativity, and collections
-          behind the author.
-        </p>
-        <Link to="/about" className="primary-btn">GET TO KNOW US</Link>
-      </section>
     </main>
   );
 }

@@ -45,30 +45,59 @@ export default function Cart({ cart, setCart }) {
 
   return (
     <main className="section">
-      <h1>Shopping Cart</h1>
+      <h1>My Cart</h1>
 
       {cart.length === 0 ? (
         <p>Your cart is currently empty.</p>
       ) : (
         <>
-          {cart.map((item) => (
-            <div className="order-row" key={item.id}>
-              <span>{item.name}</span>
-              <div>
-                <button onClick={() => updateQuantity(item.id, -1)}>−</button>
-                {" "}{item.quantity}{" "}
-                <button onClick={() => updateQuantity(item.id, 1)}>+</button>
-              </div>
-              <span>₱{(item.price * item.quantity).toFixed(2)}</span>
-              <button onClick={() => setCart((previousCart) =>
-                previousCart.filter((product) => product.id !== item.id)
-              )}>
-                Remove
-              </button>
-            </div>
-          ))}
+          <table className="cart-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cart.map((item) => (
+                <tr key={item.id}>
+                  <td data-label="Item">{item.name}</td>
+                  <td data-label="Quantity">
+                    <div className="cart-quantity-controls">
+                      <button
+                        type="button"
+                        aria-label={`Decrease quantity of ${item.name}`}
+                        onClick={() => updateQuantity(item.id, -1)}
+                      >
+                        −
+                      </button>
+                      <span>{item.quantity}</span>
+                      <button
+                        type="button"
+                        aria-label={`Increase quantity of ${item.name}`}
+                        onClick={() => updateQuantity(item.id, 1)}
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        className="cart-remove-button"
+                        onClick={() => setCart((previousCart) =>
+                          previousCart.filter((product) => product.id !== item.id)
+                        )}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </td>
+                  <td data-label="Price">₱{(item.price * item.quantity).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-          <h2>Total: ₱{total.toFixed(2)}</h2>
+          <h2 className="cart-total">Total: ₱{total.toFixed(2)}</h2>
           <button className="primary-btn" onClick={checkout}>
             CHECKOUT
           </button>

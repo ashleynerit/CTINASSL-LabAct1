@@ -14,7 +14,6 @@ import {
 // =====================================
 
 import { AdminNavbar, Navbar } from "./components/Navbar";
-import Footer from "./components/Footer";
 
 // =====================================
 // CUSTOMER PAGES
@@ -67,7 +66,7 @@ import "./index.css";
 
 function AppLayout() {
 
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const { cart, setCart, addToCart } = useCart();
 
   const location = useLocation();
@@ -93,13 +92,13 @@ function AppLayout() {
 
   }, [products]);
 
-  // Hide Navbar and Footer on authentication pages
+  // Hide the navbar on authentication pages
   const isAuthPage =
     location.pathname === "/login" ||
     location.pathname === "/signup";
 
   return (
-    <>
+    <div className={isAuthPage ? "site-layout site-layout-auth" : "site-layout"}>
 
       {/* =================================
           NAVIGATION BAR
@@ -119,6 +118,7 @@ function AppLayout() {
 
       )}
 
+      <div className="site-content">
       {/* =================================
           APPLICATION ROUTES
       ================================= */}
@@ -153,7 +153,7 @@ function AppLayout() {
         <Route
           path="/profile"
           element={
-            <Profile user={user} cart={cart} />
+            <Profile user={user} cart={cart} updateProfile={updateProfile} />
           }
         />
 
@@ -249,13 +249,8 @@ function AppLayout() {
 
       </Routes>
 
-      {/* =================================
-          FOOTER
-      ================================= */}
-
-      {!isAuthPage && <Footer />}
-
-    </>
+      </div>
+    </div>
   );
 
 }

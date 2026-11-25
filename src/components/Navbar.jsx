@@ -1,16 +1,21 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { LogOut, ShoppingBag } from "lucide-react";
 
 export function Navbar({ cartCount, user, logout }) {
   return (
     <nav className="navbar">
-      <Link to="/" className="logo">Garden of Daffodils</Link>
+      <Link to="/" className="logo" aria-label="Garden of Daffodils home">
+        <img
+          className="navbar-logo-icon"
+          src="/images/icon.png"
+          alt="Garden of Daffodils"
+        />
+      </Link>
 
       <div className="nav-links">
-        <Link to="/">Home</Link>
-        <Link to="/store">Store</Link>
-        <Link to="/about">About</Link>
-        {user && <Link to="/profile">My Profile</Link>}
+        <NavLink to="/" end>Home</NavLink>
+        <NavLink to="/store">Store</NavLink>
+        <NavLink to="/about">About</NavLink>
       </div>
 
       <div className="nav-actions">
@@ -18,6 +23,8 @@ export function Navbar({ cartCount, user, logout }) {
           <ShoppingBag size={21} />
           <span>{cartCount}</span>
         </Link>
+
+        {user && <NavLink to="/profile">My Profile</NavLink>}
 
         {user ? (
           <button onClick={logout} className="nav-button">
@@ -36,10 +43,10 @@ export function AdminNavbar({ logout }) {
     <nav className="navbar admin-nav">
       <Link to="/admin" className="logo">AGNIFIED. ADMIN</Link>
       <div className="nav-links">
-        <Link to="/admin">Dashboard</Link>
-        <Link to="/admin/products">Products</Link>
-        <Link to="/admin/inventory">Inventory</Link>
-        <Link to="/store">View Store</Link>
+        <NavLink to="/admin" end>Dashboard</NavLink>
+        <NavLink to="/admin/products">Products</NavLink>
+        <NavLink to="/admin/inventory">Inventory</NavLink>
+        <NavLink to="/store">View Store</NavLink>
       </div>
       <button onClick={logout} className="nav-button">Logout</button>
     </nav>

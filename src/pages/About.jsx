@@ -16,6 +16,28 @@ export default function About() {
         readers can discover more about the author and
         celebrate the world behind the books.
       </p>
+
+      <section className="about-social">
+        <h2>Connect with Agnified</h2>
+        <p>
+          Join the official Facebook page of Agnified Readers for updates,
+          community news, and conversations with fellow readers.
+        </p>
+        <div className="about-social-list">
+          <div className="about-social-card">
+            <h3>Facebook</h3>
+            <p>Official page: Agnified Readers</p>
+          </div>
+          <div className="about-social-card">
+            <h3>Instagram</h3>
+            <p>Details coming soon.</p>
+          </div>
+          <div className="about-social-card">
+            <h3>Email</h3>
+            <p>Contact details coming soon.</p>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
