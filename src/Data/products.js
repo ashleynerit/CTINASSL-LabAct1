@@ -12,6 +12,8 @@ export const bookSeries = [
   "Stand Alones"
 ];
 
+export const UNASSIGNED_SERIES = "Unassigned";
+
 export const seriesIdSuffixes = {
   "Alfanta Series": "AS",
   "Alfanta Side Stories": "SIDE",
@@ -21,16 +23,33 @@ export const seriesIdSuffixes = {
   "Casa Maria Series": "CMS",
   "Days of Yore": "DOY",
   "Wonder Trilogy": "TRI",
-  "Stand Alones": "SA"
+  "Stand Alones": "SA",
+  [UNASSIGNED_SERIES]: "UN"
 };
 
-export const UNASSIGNED_SERIES = "Unassigned";
+export const createProductId = (category, series, products = []) => {
+  if (category !== "Books") return Date.now();
 
-export const createProductId = (category, series) => {
-  const id = Date.now();
-  const suffix = category === "Books" ? seriesIdSuffixes[series] : null;
+  const suffix = seriesIdSuffixes[series];
+  if (!suffix) {
+    throw new Error("Choose a valid series to generate a book ID.");
+  }
 
-  return suffix ? `${suffix}-${id}` : id;
+  const idPattern = new RegExp(`^${suffix}-(\\d{2})$`);
+  const highestId = products.reduce((highest, product) => {
+    if (product.category !== "Books" || product.series !== series) {
+      return highest;
+    }
+
+    const match = idPattern.exec(String(product.id));
+    return match ? Math.max(highest, Number(match[1])) : highest;
+  }, 0);
+
+  if (highestId >= 99) {
+    throw new Error(`The ${series} has reached the 99-book ID limit.`);
+  }
+
+  return `${suffix}-${String(highestId + 1).padStart(2, "0")}`;
 };
 
 export const getProductIdLabel = (product) => {

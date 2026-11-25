@@ -3,6 +3,9 @@ import { Search } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import { bookSeries, UNASSIGNED_SERIES } from "../Data/products";
 
+const compareByBookId = (first, second) =>
+  String(first.id).localeCompare(String(second.id), undefined, { numeric: true });
+
 export default function Store({ products, addToCart }) {
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
@@ -22,7 +25,7 @@ export default function Store({ products, addToCart }) {
       products: filteredProducts.filter((product) =>
         product.category === "Books" &&
         (product.series || UNASSIGNED_SERIES) === series
-      )
+      ).sort(compareByBookId)
     }))
     .filter((group) => !search || group.products.length > 0);
 

@@ -376,6 +376,8 @@ button {
 }
 
 .product-card {
+  display: flex;
+  flex-direction: column;
   background: #fffdf0;
   border: 1px solid #e9e3cf;
   border-radius: 8px;
@@ -395,6 +397,9 @@ button {
 }
 
 .product-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: 12px;
 }
 
@@ -415,6 +420,10 @@ button {
 .full-btn {
   width: 100%;
   text-align: center;
+}
+
+.product-info .full-btn {
+  margin-top: auto;
 }
 
 .about-banner {
@@ -910,12 +919,13 @@ button {
 }
 
 .profile-details {
-  flex: 1 1 180px;
+  display: none;
 }
 
-.profile-details h2 {
-  color: #497510;
-  margin-bottom: 6px;
+.profile-divider {
+  border: 0;
+  border-top: 2px solid #497510;
+  margin: 18px 0;
 }
 
 .profile-picture-actions {
@@ -1226,6 +1236,20 @@ button {
 
 .admin-product-form .admin-product-image-field {
   grid-column: span 2;
+}
+
+.admin-image-hint {
+  color: #777;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.admin-product-image-preview {
+  width: 90px;
+  height: 120px;
+  border: 1px solid #e9e3cf;
+  border-radius: 5px;
+  object-fit: cover;
 }
 
 .admin-form-actions {

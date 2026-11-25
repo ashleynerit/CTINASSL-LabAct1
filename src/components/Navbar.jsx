@@ -24,7 +24,7 @@ export function Navbar({ cartCount, user, logout }) {
           <span>{cartCount}</span>
         </Link>
 
-        {user && <NavLink to="/profile">My Profile</NavLink>}
+        {user && <NavLink to="/profile">My Purchases</NavLink>}
 
         {user ? (
           <button onClick={logout} className="nav-button">

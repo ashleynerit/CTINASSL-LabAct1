@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../Context/AuthContext";
 import AuthLayout from "../components/AuthLayout";
 
@@ -10,6 +10,7 @@ function Login() {
   const [error, setError] = useState("");
 
   const { login, authError } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -18,7 +19,14 @@ function Login() {
     setError("");
     try {
       const account = await login({ email, password });
-      navigate(account.role === "admin" ? "/admin" : "/");
+      const requestedPath = location.state?.from?.pathname;
+      navigate(
+        account.role === "admin"
+          ? requestedPath?.startsWith("/admin")
+            ? requestedPath
+            : "/admin"
+          : "/"
+      );
     } catch (loginError) {
       setError(loginError.message);
     }

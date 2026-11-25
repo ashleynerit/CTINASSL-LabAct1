@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { User } from "lucide-react";
 import { apiRequest } from "../utils/api";
 
 export default function Profile({ user, cart, updateProfile }) {
@@ -79,40 +78,13 @@ export default function Profile({ user, cart, updateProfile }) {
 
   return (
     <main className="section">
-      <p className="accent">YOUR ACCOUNT</p>
-      <h1>My Profile</h1>
-
-      <div className="profile-card profile-card-user">
-        <div className="profile-avatar">
-          {user.profilePicture ? (
-            <img src={user.profilePicture} alt={`${user.name}'s profile`} />
-          ) : (
-            <User size={40} />
-          )}
-        </div>
+      <h1>My Purchases</h1>
 
         <div className="profile-details">
           <h2>{user.name}</h2>
           <p>{user.email}</p>
         </div>
-
-        <div className="profile-picture-actions">
-          <label className="profile-picture-upload">
-            {user.profilePicture ? "Change profile picture" : "Add profile picture"}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleProfilePictureChange}
-            />
-          </label>
-          <p className="profile-picture-hint">Choose an image up to 1 MB.</p>
-          {uploadError && (
-            <p className="profile-picture-error" role="alert">{uploadError}</p>
-          )}
-        </div>
-      </div>
-
-      <h2>My Purchase History</h2>
+      <hr className="profile-divider" />
       {ordersLoading && <p role="status">Loading your orders...</p>}
       {ordersError && (
         <p className="profile-picture-error" role="alert">{ordersError}</p>

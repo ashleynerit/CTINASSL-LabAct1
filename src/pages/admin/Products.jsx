@@ -18,6 +18,13 @@ const EMPTY_FORM = {
 
 const DEFAULT_IMAGE =
   "https://placehold.co/400x500/F5EED8/497510?text=AGNIFIED";
+const MAX_IMAGE_SIZE = 1024 * 1024;
+const IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif"
+]);
 
 const formatCurrency = (amount) =>
   `₱${Number(amount || 0).toFixed(2)}`;
@@ -25,12 +32,44 @@ const formatCurrency = (amount) =>
 export default function AdminProducts({ products, setProducts }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
+    setImagePreview("");
+  };
+
+  const selectImage = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!IMAGE_TYPES.has(file.type)) {
+      setMessage("Choose a PNG, JPEG, WEBP, or GIF image.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      setMessage("Choose an image smaller than 1 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setMessage("Unable to read the selected image.");
+        return;
+      }
+      setForm((current) => ({ ...current, image: reader.result }));
+      setImagePreview(reader.result);
+      setMessage("");
+    };
+    reader.onerror = () => setMessage("Unable to read the selected image.");
+    reader.readAsDataURL(file);
+    event.target.value = "";
   };
 
   const saveProduct = async (event) => {
@@ -56,7 +95,11 @@ export default function AdminProducts({ products, setProducts }) {
       category: form.category,
       price,
       stock,
-      image: form.image.trim() || DEFAULT_IMAGE,
+      ...(editingId === null
+        ? { image: form.image || DEFAULT_IMAGE }
+        : form.image
+          ? { image: form.image }
+          : {}),
       ...(form.category === "Books" && {
         series: form.series || UNASSIGNED_SERIES
       })
@@ -77,7 +120,7 @@ export default function AdminProducts({ products, setProducts }) {
         );
         setMessage(`${name} updated.`);
       } else {
-        const id = createProductId(form.category, form.series);
+        const id = createProductId(form.category, form.series, products);
         const result = await apiRequest("/api/admin/products", {
           method: "POST",
           body: { id, ...productDetails }
@@ -101,8 +144,9 @@ export default function AdminProducts({ products, setProducts }) {
       series: product.series || "",
       price: String(product.price),
       stock: String(product.stock),
-      image: product.image || ""
+      image: ""
     });
+    setImagePreview(product.image || "");
     setMessage("");
   };
 
@@ -214,16 +258,27 @@ export default function AdminProducts({ products, setProducts }) {
             />
           </label>
           <label className="admin-product-image-field">
-            Image URL or path
+            Upload product image
             <input
-              type="text"
-              placeholder="Optional image URL"
-              value={form.image}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, image: event.target.value }))
-              }
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={selectImage}
             />
+            <span className="admin-image-hint">
+              {form.image
+                ? "New image selected."
+                : editingId !== null
+                  ? "Choose a file to replace the current image."
+                  : "Optional. PNG, JPEG, WEBP, or GIF up to 1 MB."}
+            </span>
           </label>
+          {imagePreview && (
+            <img
+              className="admin-product-image-preview"
+              src={imagePreview}
+              alt="Product image preview"
+            />
+          )}
           <div className="admin-form-actions">
             <button className="primary-btn" type="submit" disabled={saving}>
               {saving

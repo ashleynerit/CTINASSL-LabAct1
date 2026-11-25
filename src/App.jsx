@@ -99,6 +99,8 @@ function AppLayout() {
   };
 
   const isAuthPage = ["/login", "/signup"].includes(location.pathname);
+  const isAdminRoute =
+    location.pathname === "/admin" || location.pathname.startsWith("/admin/");
   const loadingMessage = (message) => (
     <p className="section" role="status">{message}</p>
   );
@@ -106,11 +108,11 @@ function AppLayout() {
     ? loadingMessage("Restoring your account...")
     : user?.role === "admin"
       ? element
-      : <Navigate to="/login" replace />;
+      : <Navigate to="/login" state={{ from: location }} replace />;
 
   return (
     <div className={isAuthPage ? "site-layout site-layout-auth" : "site-layout"}>
-      {!isAuthPage && (
+      {!isAuthPage && !(authLoading && isAdminRoute) && (
         user?.role === "admin"
           ? <AdminNavbar logout={handleLogout} />
           : (
@@ -202,6 +204,10 @@ function AppLayout() {
             )}
           />
           <Route path="/admin/sales" element={adminPage(<Sales orders={orders} />)} />
+          <Route
+            path="/admin/*"
+            element={adminPage(<Navigate to="/admin" replace />)}
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

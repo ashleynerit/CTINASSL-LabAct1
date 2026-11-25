@@ -6,10 +6,10 @@ import bcrypt from "bcryptjs";
 import MongoStore from "connect-mongo";
 import dotenv from "dotenv";
 import express from "express";
-import rateLimit from "express-rate-limit";
 import session from "express-session";
 import helmet from "helmet";
 import { ObjectId } from "mongodb";
+import { seriesIdSuffixes } from "../src/Data/products.js";
 import { initialProducts } from "../shared/initialProducts.js";
 import { connectToDatabase } from "./db.js";
 
@@ -50,7 +50,9 @@ const serializeProduct = (product) => ({
   series: product.series,
   price: product.price,
   stock: product.stock,
-  image: product.image
+  image: product.image.startsWith("data:image/")
+    ? `/api/products/${encodeURIComponent(String(product._id))}/image`
+    : product.image
 });
 
 const serializeOrder = (order) => ({
@@ -64,12 +66,50 @@ const serializeOrder = (order) => ({
   date: order.createdAt
 });
 
+const validateProductImage = (image) => {
+  if (image.startsWith("data:")) {
+    const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
+    if (!match) {
+      throw new HttpError(400, "Upload a PNG, JPEG, WEBP, or GIF image.");
+    }
+
+    const bytes = Buffer.from(match[2], "base64");
+    if (bytes.length === 0 || bytes.length > 1024 * 1024) {
+      throw new HttpError(400, "Product images must be 1 MB or smaller.");
+    }
+
+    const signatures = {
+      "image/png": bytes.length >= 8 &&
+        bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+      "image/jpeg": bytes.length >= 3 &&
+        bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255,
+      "image/webp": bytes.length >= 12 &&
+        bytes.toString("ascii", 0, 4) === "RIFF" &&
+        bytes.toString("ascii", 8, 12) === "WEBP",
+      "image/gif": bytes.length >= 6 &&
+        ["GIF87a", "GIF89a"].includes(bytes.toString("ascii", 0, 6))
+    };
+
+    if (!signatures[match[1]]) {
+      throw new HttpError(400, "The selected file is not a valid image.");
+    }
+    return image;
+  }
+
+  if (image.length > 2048) {
+    throw new HttpError(400, "Product image URL is too long.");
+  }
+  return image;
+};
+
 const validateProduct = (values) => {
   const name = typeof values.name === "string" ? values.name.trim() : "";
   const category = values.category;
   const price = Number(values.price);
   const stock = Number(values.stock);
-  const image = typeof values.image === "string" ? values.image.trim() : "";
+  const image = typeof values.image === "string"
+    ? validateProductImage(values.image.trim())
+    : "";
 
   if (!name || name.length > 200) {
     throw new HttpError(400, "Product name is required and must be 200 characters or fewer.");
@@ -83,14 +123,10 @@ const validateProduct = (values) => {
   if (!Number.isInteger(stock) || stock < 0) {
     throw new HttpError(400, "Stock must be a whole number of zero or more.");
   }
-  if (image.length > 2048) {
-    throw new HttpError(400, "Product image URL is too long.");
-  }
-
   const product = { name, category, price, stock, image };
   if (category === "Books") {
     const series = typeof values.series === "string" ? values.series.trim() : "";
-    if (!series || series.length > 100) {
+    if (!series || series.length > 100 || !seriesIdSuffixes[series]) {
       throw new HttpError(400, "Choose a valid book series.");
     }
     product.series = series;
@@ -141,7 +177,7 @@ const normalizeCartItems = async (requestedItems) => {
       series: product.series,
       price: product.price,
       stock: product.stock,
-      image: product.image,
+      image: serializeProduct(product).image,
       quantity
     });
   }
@@ -187,14 +223,6 @@ const requireAdmin = asyncRoute(async (request, response, next) => {
 
   request.user = user;
   next();
-});
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many sign-in attempts. Try again later." }
 });
 
 app.disable("x-powered-by");
@@ -266,7 +294,7 @@ app.put("/api/cart", asyncRoute(async (request, response) => {
 }));
 
 //log in route
-app.post("/api/auth/login", loginLimiter, asyncRoute(async (request, response) => {
+app.post("/api/auth/login", asyncRoute(async (request, response) => {
   const email = validateEmail(request.body?.email);
   const password = request.body?.password;
   if (typeof password !== "string" || !password) {
@@ -309,7 +337,7 @@ app.post("/api/auth/login", loginLimiter, asyncRoute(async (request, response) =
 }));
 
 //sign up route
-app.post("/api/auth/signup", loginLimiter, asyncRoute(async (request, response) => {
+app.post("/api/auth/signup", asyncRoute(async (request, response) => {
   const email = validateEmail(request.body?.email);
   const name = typeof request.body?.name === "string"
     ? request.body.name.trim()
@@ -410,6 +438,24 @@ app.get("/api/products", asyncRoute(async (request, response) => {
   response.json({ products: products.map(serializeProduct) });
 }));
 
+app.get("/api/products/:id/image", asyncRoute(async (request, response) => {
+  const product = await database.collection("products").findOne(
+    { _id: request.params.id },
+    { projection: { image: 1 } }
+  );
+  const match = typeof product?.image === "string"
+    ? /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/.exec(product.image)
+    : null;
+  if (!match) {
+    throw new HttpError(404, "Product image not found.");
+  }
+
+  response
+    .set("Content-Type", match[1])
+    .set("Cache-Control", "public, max-age=3600")
+    .send(Buffer.from(match[2], "base64"));
+}));
+
 app.post("/api/admin/products", requireAdmin, asyncRoute(async (request, response) => {
   const id = String(request.body?.id || "").trim();
   if (!id || id.length > 100) {
@@ -417,6 +463,28 @@ app.post("/api/admin/products", requireAdmin, asyncRoute(async (request, respons
   }
 
   const product = validateProduct(request.body);
+  if (product.category === "Books") {
+    const suffix = seriesIdSuffixes[product.series];
+    const idPattern = new RegExp(`^${suffix}-(\\d{2})$`);
+    const existingProducts = await database.collection("products")
+      .find({ series: product.series, _id: { $regex: idPattern } })
+      .project({ _id: 1 })
+      .toArray();
+    const highestId = existingProducts.reduce((highest, existing) => {
+      const match = idPattern.exec(existing._id);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+
+    if (highestId >= 99) {
+      throw new HttpError(409, `The ${product.series} has reached the 99-book ID limit.`);
+    }
+
+    const expectedId = `${suffix}-${String(highestId + 1).padStart(2, "0")}`;
+    if (id !== expectedId) {
+      throw new HttpError(409, `The next book ID for ${product.series} is ${expectedId}.`);
+    }
+  }
+
   try {
     await database.collection("products").insertOne({
       _id: id,
@@ -430,7 +498,7 @@ app.post("/api/admin/products", requireAdmin, asyncRoute(async (request, respons
     }
     throw error;
   }
-  response.status(201).json({ product: { id, ...product } });
+  response.status(201).json({ product: serializeProduct({ _id: id, ...product }) });
 }));
 
 app.patch("/api/admin/products/:id", requireAdmin, asyncRoute(async (request, response) => {
@@ -445,7 +513,9 @@ app.patch("/api/admin/products/:id", requireAdmin, asyncRoute(async (request, re
     { _id: currentProduct._id },
     { $set: { ...updates, updatedAt: new Date() } }
   );
-  response.json({ product: { id: currentProduct._id, ...updates } });
+  response.json({
+    product: serializeProduct({ _id: currentProduct._id, ...updates })
+  });
 }));
 
 app.delete("/api/admin/products/:id", requireAdmin, asyncRoute(async (request, response) => {
@@ -542,7 +612,7 @@ app.post("/api/orders", requireAuth, asyncRoute(async (request, response) => {
         series: product.series,
         price: product.price,
         quantity,
-        image: product.image
+        image: serializeProduct(product).image
       });
     }
 
@@ -767,8 +837,8 @@ async function seedAdmin() {
 }
 
 async function startServer() {
-  if (isProduction && !process.env.SESSION_SECRET) {
-    throw new Error("SESSION_SECRET must be set in production.");
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET must be set in .env.local and remain stable across server restarts.");
   }
 
   const connection = await connectToDatabase(mongoUri, databaseName);
@@ -783,7 +853,7 @@ async function startServer() {
   if (isProduction) app.set("trust proxy", 1);
   sessionMiddleware = session({
     name: "garden.sid",
-    secret: process.env.SESSION_SECRET || randomBytes(32).toString("hex"),
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
