@@ -1,9 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { User } from "lucide-react";
+import { apiRequest } from "../utils/api";
 
 export default function Profile({ user, cart, updateProfile }) {
   const [uploadError, setUploadError] = useState("");
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(Boolean(user));
+  const [ordersError, setOrdersError] = useState("");
+
+  useEffect(() => {
+    if (!user) return undefined;
+
+    let active = true;
+    apiRequest("/api/orders/mine")
+      .then((result) => {
+        if (active) {
+          setOrders(result.orders);
+          setOrdersError("");
+        }
+      })
+      .catch((error) => {
+        if (active) setOrdersError(error.message);
+      })
+      .finally(() => {
+        if (active) setOrdersLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   if (!user) {
     return (
@@ -13,8 +40,6 @@ export default function Profile({ user, cart, updateProfile }) {
       </div>
     );
   }
-
-  const orders = JSON.parse(localStorage.getItem("orders")) || [];
 
   const handleProfilePictureChange = (event) => {
     const file = event.target.files?.[0];
@@ -33,14 +58,16 @@ export default function Profile({ user, cart, updateProfile }) {
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result !== "string") {
         setUploadError("Unable to read the selected image.");
         return;
       }
 
-      if (!updateProfile({ profilePicture: reader.result })) {
-        setUploadError("Unable to save the profile picture. Please try a smaller image.");
+      try {
+        await updateProfile({ profilePicture: reader.result });
+      } catch (error) {
+        setUploadError(error.message);
       }
     };
     reader.onerror = () => {
@@ -86,10 +113,17 @@ export default function Profile({ user, cart, updateProfile }) {
       </div>
 
       <h2>My Purchase History</h2>
-      {orders.filter((order) => order.email === user.email).map((order) => (
+      {ordersLoading && <p role="status">Loading your orders...</p>}
+      {ordersError && (
+        <p className="profile-picture-error" role="alert">{ordersError}</p>
+      )}
+      {!ordersLoading && !ordersError && orders.length === 0 && (
+        <p>You have not placed any orders yet.</p>
+      )}
+      {orders.map((order) => (
         <div className="order-row" key={order.id}>
           <span>Order #{order.id}</span>
-          <span>₱{order.total.toFixed(2)}</span>
+          <span>₱{Number(order.total).toFixed(2)}</span>
           <span>{order.status}</span>
         </div>
       ))}

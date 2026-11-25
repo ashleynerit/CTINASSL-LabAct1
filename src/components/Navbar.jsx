@@ -44,8 +44,10 @@ export function AdminNavbar({ logout }) {
       <Link to="/admin" className="logo">AGNIFIED. ADMIN</Link>
       <div className="nav-links">
         <NavLink to="/admin" end>Dashboard</NavLink>
+        <NavLink to="/admin/orders">Orders</NavLink>
         <NavLink to="/admin/products">Products</NavLink>
         <NavLink to="/admin/inventory">Inventory</NavLink>
+        <NavLink to="/admin/sales">Sales</NavLink>
         <NavLink to="/store">View Store</NavLink>
       </div>
       <button onClick={logout} className="nav-button">Logout</button>

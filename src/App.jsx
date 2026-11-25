@@ -1,304 +1,224 @@
-
-import { useState, useEffect } from "react";
-
+import { useCallback, useEffect, useState } from "react";
 import {
   BrowserRouter,
-  Routes,
-  Route,
   Navigate,
+  Route,
+  Routes,
   useLocation
 } from "react-router-dom";
-
-// =====================================
-// COMPONENTS
-// =====================================
-
 import { AdminNavbar, Navbar } from "./components/Navbar";
-
-// =====================================
-// CUSTOMER PAGES
-// =====================================
-
-import Home from "./pages/Home";
-import Store from "./pages/Store";
+import { AuthProvider, useAuth } from "./Context/AuthContext";
+import { CartProvider, useCart } from "./Context/CartContext";
 import About from "./pages/About";
-import Profile from "./pages/Profile";
 import Cart from "./pages/Cart";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
+import Profile from "./pages/Profile";
 import Signup from "./pages/Signup";
-
-// =====================================
-// ADMIN PAGES
-// =====================================
-
+import Store from "./pages/Store";
 import Dashboard from "./pages/admin/Dashboard";
+import Inventory from "./pages/admin/Inventory";
+import Orders from "./pages/admin/Orders";
 import Products from "./pages/admin/Products";
-
-// =====================================
-// CONTEXT
-// =====================================
-
-import {
-  AuthProvider,
-  useAuth
-} from "./Context/AuthContext";
-
-import {
-  CartProvider,
-  useCart
-} from "./Context/CartContext";
-
-// =====================================
-// DATA
-// =====================================
-
-import { initialProducts } from "./Data/products.js";
-
-const AS1_PRODUCT_MIGRATION_KEY = "products-seed-as-01-applied";
-
-// =====================================
-// GLOBAL CSS
-// =====================================
-
+import Sales from "./pages/admin/Sales";
+import { apiRequest } from "./utils/api";
 import "./index.css";
 
-// =====================================
-// APPLICATION LAYOUT
-// =====================================
-
 function AppLayout() {
-
-  const { user, logout, updateProfile } = useAuth();
-  const { cart, setCart, addToCart } = useCart();
-
+  const { user, logout, updateProfile, loading: authLoading, authError } = useAuth();
+  const {
+    cart,
+    setCart,
+    addToCart,
+    cartLoading,
+    cartSaving,
+    cartError
+  } = useCart();
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [dataError, setDataError] = useState("");
   const location = useLocation();
 
-  // Product management
-  const [products, setProducts] = useState(() => {
-
-    const savedProducts = localStorage.getItem("products");
-
-    if (!savedProducts) {
-      return initialProducts;
+  const refreshProducts = useCallback(async () => {
+    try {
+      const result = await apiRequest("/api/products");
+      setProducts(result.products);
+      setDataError("");
+      return result.products;
+    } catch (error) {
+      setDataError(error.message);
+      throw error;
     }
+  }, []);
 
-    const savedProductList = JSON.parse(savedProducts);
-    const migrationApplied =
-      localStorage.getItem(AS1_PRODUCT_MIGRATION_KEY) === "true";
-
-    if (migrationApplied) {
-      return savedProductList;
-    }
-
-    const as1Book = initialProducts.find((product) => product.id === "AS-01");
-    const alreadyAdded = savedProductList.some(
-      (product) => product.id === "AS-01"
-    );
-
-    return as1Book && !alreadyAdded
-      ? [...savedProductList, as1Book]
-      : savedProductList;
-
-  });
-
-  // Save products whenever they change
   useEffect(() => {
+    let active = true;
+    apiRequest("/api/products")
+      .then((result) => {
+        if (active) {
+          setProducts(result.products);
+          setDataError("");
+        }
+      })
+      .catch((error) => {
+        if (active) setDataError(error.message);
+      })
+      .finally(() => {
+        if (active) setProductsLoading(false);
+      });
 
-    localStorage.setItem(
-      "products",
-      JSON.stringify(products)
-    );
-    localStorage.setItem(AS1_PRODUCT_MIGRATION_KEY, "true");
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  }, [products]);
+  useEffect(() => {
+    if (user?.role !== "admin") {
+      return undefined;
+    }
 
-  // Hide the navbar on authentication pages
-  const isAuthPage =
-    location.pathname === "/login" ||
-    location.pathname === "/signup";
+    let active = true;
+    apiRequest("/api/admin/orders")
+      .then((result) => {
+        if (active) setOrders(result.orders);
+      })
+      .catch((error) => {
+        if (active) setDataError(error.message);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const handleLogout = () => {
+    logout()
+      .then(() => setOrders([]))
+      .catch((error) => window.alert(error.message));
+  };
+
+  const isAuthPage = ["/login", "/signup"].includes(location.pathname);
+  const loadingMessage = (message) => (
+    <p className="section" role="status">{message}</p>
+  );
+  const adminPage = (element) => authLoading
+    ? loadingMessage("Restoring your account...")
+    : user?.role === "admin"
+      ? element
+      : <Navigate to="/login" replace />;
 
   return (
     <div className={isAuthPage ? "site-layout site-layout-auth" : "site-layout"}>
-
-      {/* =================================
-          NAVIGATION BAR
-      ================================= */}
-
       {!isAuthPage && (
-
-        user?.role === "admin" ? (
-          <AdminNavbar logout={logout} />
-        ) : (
-          <Navbar
-            cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-            user={user}
-            logout={logout}
-          />
-        )
-
+        user?.role === "admin"
+          ? <AdminNavbar logout={handleLogout} />
+          : (
+            <Navbar
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              user={user}
+              logout={handleLogout}
+            />
+          )
       )}
 
       <div className="site-content">
-      {/* =================================
-          APPLICATION ROUTES
-      ================================= */}
-
-      <Routes>
-
-        {/* =================================
-            CUSTOMER PAGES
-        ================================= */}
-
-        <Route
-          path="/"
-          element={
-            <Home products={products} />
-          }
-        />
-
-        <Route
-          path="/store"
-          element={
-            <Store products={products} addToCart={addToCart} />
-          }
-        />
-
-        <Route
-          path="/about"
-          element={
-            <About />
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            <Profile user={user} cart={cart} updateProfile={updateProfile} />
-          }
-        />
-
-        <Route
-          path="/cart"
-          element={
-            <Cart cart={cart} setCart={setCart} />
-          }
-        />
-
-        {/* =================================
-            AUTHENTICATION PAGES
-        ================================= */}
-
-        <Route
-          path="/login"
-          element={
-            user ? (
-              <Navigate
-                to={user.role === "admin" ? "/admin" : "/"}
-                replace
-              />
-            ) : (
-              <Login />
-            )
-          }
-        />
-
-        <Route
-          path="/signup"
-          element={
-            user ? (
-              <Navigate to="/" replace />
-            ) : (
-              <Signup />
-            )
-          }
-        />
-
-        {/* =================================
-            ADMIN PAGES
-        ================================= */}
-
-        <Route
-          path="/admin"
-          element={
-            user?.role === "admin" ? (
-              <Dashboard products={products} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
-        <Route
-          path="/admin/products"
-          element={
-            user?.role === "admin" ? (
-              <Products
+        {(authError || dataError || cartError) && (
+          <p className="profile-picture-error api-error-banner" role="alert">
+            {authError || dataError || cartError}
+          </p>
+        )}
+        <Routes>
+          <Route path="/" element={<Home products={products} />} />
+          <Route path="/store" element={<Store products={products} addToCart={addToCart} />} />
+          <Route path="/about" element={<About />} />
+          <Route
+            path="/profile"
+            element={authLoading
+              ? loadingMessage("Restoring your account...")
+              : (
+                <Profile
+                  key={user?.id || "signed-out"}
+                  user={user}
+                  cart={cart}
+                  updateProfile={updateProfile}
+                />
+              )}
+          />
+          <Route
+            path="/cart"
+            element={
+              <Cart
+                cart={cart}
+                setCart={setCart}
+                user={user}
                 products={products}
-                setProducts={setProducts}
+                productsLoading={productsLoading}
+                cartLoading={cartLoading}
+                cartSaving={cartSaving}
+                cartError={cartError}
+                setOrders={setOrders}
+                refreshProducts={refreshProducts}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
-        <Route
-          path="/admin/inventory"
-          element={
-            user?.role === "admin" ? (
-              <Products
-                products={products}
-                setProducts={setProducts}
+            }
+          />
+          <Route
+            path="/login"
+            element={authLoading
+              ? loadingMessage("Restoring your account...")
+              : user
+                ? <Navigate to={user.role === "admin" ? "/admin" : "/"} replace />
+                : <Login />}
+          />
+          <Route
+            path="/signup"
+            element={authLoading
+              ? loadingMessage("Restoring your account...")
+              : user
+                ? <Navigate to="/" replace />
+                : <Signup />}
+          />
+          <Route path="/admin" element={adminPage(<Dashboard products={products} orders={orders} />)} />
+          <Route
+            path="/admin/products"
+            element={adminPage(
+              <Products products={products} setProducts={setProducts} />
+            )}
+          />
+          <Route
+            path="/admin/inventory"
+            element={adminPage(
+              <Inventory products={products} setProducts={setProducts} />
+            )}
+          />
+          <Route
+            path="/admin/orders"
+            element={adminPage(
+              <Orders
+                orders={orders}
+                setOrders={setOrders}
+                refreshProducts={refreshProducts}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
-        {/* =================================
-            PAGE NOT FOUND
-        ================================= */}
-
-        <Route
-          path="*"
-          element={
-            <Navigate to="/" replace />
-          }
-        />
-
-      </Routes>
-
+            )}
+          />
+          <Route path="/admin/sales" element={adminPage(<Sales orders={orders} />)} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
     </div>
   );
-
 }
 
-// =====================================
-// MAIN APP COMPONENT
-// =====================================
-
 function App() {
-
   return (
-
     <BrowserRouter>
-
       <AuthProvider>
-
         <CartProvider>
-
           <AppLayout />
-
         </CartProvider>
-
       </AuthProvider>
-
     </BrowserRouter>
-
   );
-
 }
 
 export default App;

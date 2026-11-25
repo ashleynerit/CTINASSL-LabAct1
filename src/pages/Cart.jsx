@@ -1,7 +1,22 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { apiRequest } from "../utils/api";
 
-export default function Cart({ cart, setCart }) {
+export default function Cart({
+  cart,
+  setCart,
+  user,
+  products,
+  productsLoading,
+  cartLoading,
+  cartSaving,
+  cartError,
+  setOrders,
+  refreshProducts
+}) {
   const navigate = useNavigate();
+  const [checkoutError, setCheckoutError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const total = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -15,39 +30,55 @@ export default function Cart({ cart, setCart }) {
     ));
   };
 
-  const checkout = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-
+  const checkout = async () => {
     if (!user) {
       alert("Please log in before checking out.");
       navigate("/login");
       return;
     }
 
-    if (!cart.length) return;
+    if (!cart.length || submitting || productsLoading ||
+      cartLoading || cartSaving || cartError) return;
+    setCheckoutError("");
 
-    const orders = JSON.parse(localStorage.getItem("orders")) || [];
-
-    orders.push({
-      id: Date.now(),
-      email: user.email,
-      items: cart,
-      total,
-      status: "Pending",
-      date: new Date().toLocaleDateString()
+    const unavailableItem = cart.find((item) => {
+      const product = products.find((entry) => entry.id === item.id);
+      return !product || Number(product.stock) < Number(item.quantity);
     });
 
-    localStorage.setItem("orders", JSON.stringify(orders));
-    setCart([]);
-    alert("Demo order placed successfully!");
-    navigate("/profile");
+    if (unavailableItem) {
+      setCheckoutError(
+        `${unavailableItem.name} is no longer available in the requested quantity.`
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await apiRequest("/api/orders", {
+        method: "POST",
+        body: {}
+      });
+      setOrders((previousOrders) => [result.order, ...previousOrders]);
+      setCart([]);
+      navigate("/profile");
+      refreshProducts().catch((error) => {
+        console.error("Order succeeded, but refreshing product stock failed.", error);
+      });
+    } catch (error) {
+      setCheckoutError(error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <main className="section">
       <h1>My Cart</h1>
 
-      {cart.length === 0 ? (
+      {cartLoading ? (
+        <p role="status">Loading your cart...</p>
+      ) : cart.length === 0 ? (
         <p>Your cart is currently empty.</p>
       ) : (
         <>
@@ -98,8 +129,25 @@ export default function Cart({ cart, setCart }) {
           </table>
 
           <h2 className="cart-total">Total: ₱{total.toFixed(2)}</h2>
-          <button className="primary-btn" onClick={checkout}>
-            CHECKOUT
+          {checkoutError && (
+            <p className="profile-picture-error" role="alert">{checkoutError}</p>
+          )}
+          <button
+            className="primary-btn"
+            onClick={checkout}
+            disabled={
+              submitting ||
+              productsLoading ||
+              cartLoading ||
+              cartSaving ||
+              Boolean(cartError)
+            }
+          >
+            {submitting
+              ? "PLACING ORDER..."
+              : cartSaving
+                ? "SAVING CART..."
+                : "CHECKOUT"}
           </button>
         </>
       )}

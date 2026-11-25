@@ -2,48 +2,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
+import { apiRequest } from "../utils/api";
 
 function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
 
-    const accounts = JSON.parse(
-      localStorage.getItem("accounts") || "[]"
-    );
-
-    const existingAccount = accounts.find(
-      account => account.email === email
-    );
-
-    if (existingAccount) {
-      alert("Email is already registered.");
-      return;
+    setError("");
+    try {
+      await apiRequest("/api/auth/signup", {
+        method: "POST",
+        body: { name, email, password }
+      });
+      alert("Account created successfully!");
+      navigate("/login");
+    } catch (signupError) {
+      setError(signupError.message);
     }
-
-    const newAccount = {
-      id: Date.now(),
-      name,
-      email,
-      password,
-      role: "user"
-    };
-
-    accounts.push(newAccount);
-
-    localStorage.setItem(
-      "accounts",
-      JSON.stringify(accounts)
-    );
-
-    alert("Account created successfully!");
-
-    navigate("/login");
   };
 
   return (
@@ -57,9 +39,10 @@ function Signup() {
       <form onSubmit={handleSignup} className="auth-form">
 
         <div className="form-group">
-          <label>Display name</label>
+          <label htmlFor="signup-name">Display name</label>
 
           <input
+            id="signup-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -68,9 +51,10 @@ function Signup() {
         </div>
 
         <div className="form-group">
-          <label>Email</label>
+          <label htmlFor="signup-email">Email</label>
 
           <input
+            id="signup-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -79,13 +63,15 @@ function Signup() {
         </div>
 
         <div className="form-group">
-          <label>Password</label>
+          <label htmlFor="signup-password">Password</label>
 
           <input
+            id="signup-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={8}
+            maxLength={72}
             required
           />
         </div>
@@ -95,6 +81,9 @@ function Signup() {
         </button>
 
       </form>
+      {error && (
+        <p className="profile-picture-error" role="alert">{error}</p>
+      )}
 
     </AuthLayout>
   );

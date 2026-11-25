@@ -7,34 +7,20 @@ import AuthLayout from "../components/AuthLayout";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const { login } = useAuth();
+  const { login, authError } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    const accounts = JSON.parse(
-      localStorage.getItem("accounts") || "[]"
-    );
-
-    const account = accounts.find(
-      a =>
-        a.email === email &&
-        a.password === password
-    );
-
-    if (!account) {
-      alert("Invalid email or password.");
-      return;
-    }
-
-    login(account);
-
-    if (account.role === "admin") {
-      navigate("/admin");
-    } else {
-      navigate("/");
+    setError("");
+    try {
+      const account = await login({ email, password });
+      navigate(account.role === "admin" ? "/admin" : "/");
+    } catch (loginError) {
+      setError(loginError.message);
     }
   };
 
@@ -49,9 +35,10 @@ function Login() {
       <form onSubmit={handleLogin} className="auth-form">
 
         <div className="form-group">
-          <label>Email</label>
+          <label htmlFor="login-email">Email</label>
 
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -60,9 +47,10 @@ function Login() {
         </div>
 
         <div className="form-group">
-          <label>Password</label>
+          <label htmlFor="login-password">Password</label>
 
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -75,6 +63,11 @@ function Login() {
         </button>
 
       </form>
+      {(error || authError) && (
+        <p className="profile-picture-error" role="alert">
+          {error || authError}
+        </p>
+      )}
 
     </AuthLayout>
   );

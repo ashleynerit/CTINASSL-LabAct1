@@ -5,105 +5,301 @@ import {
   getProductIdLabel,
   UNASSIGNED_SERIES
 } from "../../Data/products";
+import { apiRequest } from "../../utils/api";
+
+const EMPTY_FORM = {
+  name: "",
+  category: "Books",
+  series: "",
+  price: "",
+  stock: "",
+  image: ""
+};
+
+const DEFAULT_IMAGE =
+  "https://placehold.co/400x500/F5EED8/497510?text=AGNIFIED";
+
+const formatCurrency = (amount) =>
+  `₱${Number(amount || 0).toFixed(2)}`;
 
 export default function AdminProducts({ products, setProducts }) {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
-  const [category, setCategory] = useState("Books");
-  const [series, setSeries] = useState("");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const addProduct = (event) => {
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+  };
+
+  const saveProduct = async (event) => {
     event.preventDefault();
+    if (saving) return;
+    const name = form.name.trim();
+    const price = Number(form.price);
+    const stock = Number(form.stock);
 
-    const newProduct = {
-      id: createProductId(category, series),
+    if (!name || !Number.isFinite(price) || price < 0 ||
+      !Number.isInteger(stock) || stock < 0) {
+      setMessage("Enter a product name, valid price, and whole-number stock count.");
+      return;
+    }
+
+    if (form.category === "Books" && !form.series) {
+      setMessage("Choose a series for this book.");
+      return;
+    }
+
+    const productDetails = {
       name,
-      price: Number(price),
-      stock: Number(stock),
-      category,
-      ...(category === "Books" && {
-        series: series || UNASSIGNED_SERIES
-      }),
-      image: "https://placehold.co/400x500/F5EED8/497510?text=AGNIFIED"
+      category: form.category,
+      price,
+      stock,
+      image: form.image.trim() || DEFAULT_IMAGE,
+      ...(form.category === "Books" && {
+        series: form.series || UNASSIGNED_SERIES
+      })
     };
 
-    setProducts((previousProducts) => [...previousProducts, newProduct]);
-    setName("");
-    setPrice("");
-    setStock("");
+    setSaving(true);
+    setMessage("");
+    try {
+      if (editingId !== null) {
+        const result = await apiRequest(
+          `/api/admin/products/${encodeURIComponent(editingId)}`,
+          { method: "PATCH", body: productDetails }
+        );
+        setProducts((currentProducts) =>
+          currentProducts.map((product) =>
+            product.id === editingId ? result.product : product
+          )
+        );
+        setMessage(`${name} updated.`);
+      } else {
+        const id = createProductId(form.category, form.series);
+        const result = await apiRequest("/api/admin/products", {
+          method: "POST",
+          body: { id, ...productDetails }
+        });
+        setProducts((currentProducts) => [...currentProducts, result.product]);
+        setMessage(`${name} added.`);
+      }
+      resetForm();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const editProduct = (product) => {
+    setEditingId(product.id);
+    setForm({
+      name: product.name,
+      category: product.category,
+      series: product.series || "",
+      price: String(product.price),
+      stock: String(product.stock),
+      image: product.image || ""
+    });
+    setMessage("");
+  };
+
+  const deleteProduct = async (product) => {
+    if (!window.confirm(`Delete "${product.name}" from the catalog?`)) return;
+
+    setMessage("");
+    try {
+      await apiRequest(
+        `/api/admin/products/${encodeURIComponent(product.id)}`,
+        { method: "DELETE" }
+      );
+      setProducts((currentProducts) =>
+        currentProducts.filter((item) => item.id !== product.id)
+      );
+      if (editingId === product.id) resetForm();
+      setMessage(`${product.name} deleted.`);
+    } catch (error) {
+      setMessage(error.message);
+    }
   };
 
   return (
     <main className="section">
-      <h1>Product Management</h1>
-
-      <form className="admin-form" onSubmit={addProduct}>
-        <input
-          placeholder="Product Name"
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <input
-          type="number"
-          placeholder="Price"
-          required
-          min="0"
-          value={price}
-          onChange={(event) => setPrice(event.target.value)}
-        />
-        <input
-          type="number"
-          placeholder="Stock"
-          required
-          min="0"
-          value={stock}
-          onChange={(event) => setStock(event.target.value)}
-        />
-        <select value={category} onChange={(event) => setCategory(event.target.value)}>
-          <option>Books</option>
-          <option>Merchandise</option>
-        </select>
-        {category === "Books" && (
-          <select
-            value={series}
-            onChange={(event) => setSeries(event.target.value)}
-            required
-          >
-            <option value="">Choose a series</option>
-            {bookSeries.map((bookSeriesName) => (
-              <option key={bookSeriesName} value={bookSeriesName}>
-                {bookSeriesName}
-              </option>
-            ))}
-            <option value={UNASSIGNED_SERIES}>{UNASSIGNED_SERIES}</option>
-          </select>
-        )}
-        <button className="primary-btn">ADD PRODUCT</button>
-      </form>
-
-      <h2>All Products</h2>
-
-      {products.map((product) => (
-        <div className="order-row" key={product.id}>
-          <span>ID: {getProductIdLabel(product)}</span>
-          <span>{product.name}</span>
-          <span>{product.category}</span>
-          {product.category === "Books" && (
-            <span>{product.series || UNASSIGNED_SERIES}</span>
-          )}
-          <span>₱{product.price}</span>
-          <span>Stock: {product.stock}</span>
-          <button onClick={() =>
-            setProducts((previousProducts) =>
-              previousProducts.filter((item) => item.id !== product.id)
-            )
-          }>
-            Delete
-          </button>
+      <div className="admin-page-heading">
+        <div>
+          <p className="accent">CATALOG MANAGEMENT</p>
+          <h1>Products</h1>
+          <p>Add, edit, and remove items available in the store.</p>
         </div>
-      ))}
+        <div className="admin-summary-chip">
+          Products: <strong>{products.length}</strong>
+        </div>
+      </div>
+
+      <section className="admin-panel">
+        <div className="admin-panel-heading">
+          <h2>{editingId !== null ? "Edit product" : "Add a product"}</h2>
+        </div>
+        <form className="admin-product-form" onSubmit={saveProduct}>
+          <label>
+            Product name
+            <input
+              value={form.name}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
+              required
+            />
+          </label>
+          <label>
+            Category
+            <select
+              value={form.category}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  category: event.target.value,
+                  series: event.target.value === "Books" ? current.series : ""
+                }))
+              }
+            >
+              <option>Books</option>
+              <option>Merchandise</option>
+            </select>
+          </label>
+          {form.category === "Books" && (
+            <label>
+              Series
+              <select
+                value={form.series}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, series: event.target.value }))
+                }
+                required
+              >
+                <option value="">Choose a series</option>
+                {bookSeries.map((series) => (
+                  <option key={series} value={series}>{series}</option>
+                ))}
+                <option value={UNASSIGNED_SERIES}>{UNASSIGNED_SERIES}</option>
+              </select>
+            </label>
+          )}
+          <label>
+            Price (₱)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.price}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, price: event.target.value }))
+              }
+              required
+            />
+          </label>
+          <label>
+            Stock quantity
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.stock}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, stock: event.target.value }))
+              }
+              required
+            />
+          </label>
+          <label className="admin-product-image-field">
+            Image URL or path
+            <input
+              type="text"
+              placeholder="Optional image URL"
+              value={form.image}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, image: event.target.value }))
+              }
+            />
+          </label>
+          <div className="admin-form-actions">
+            <button className="primary-btn" type="submit" disabled={saving}>
+              {saving
+                ? "SAVING..."
+                : editingId !== null
+                  ? "SAVE CHANGES"
+                  : "ADD PRODUCT"}
+            </button>
+            {editingId !== null && (
+              <button
+                className="admin-button admin-button-secondary"
+                type="button"
+                onClick={resetForm}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+        {message && <p className="admin-feedback" role="status">{message}</p>}
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-heading">
+          <h2>All products</h2>
+          <span>{products.length} item(s)</span>
+        </div>
+        {products.length === 0 ? (
+          <p className="admin-empty">No products in the catalog yet.</p>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Product</th>
+                  <th scope="col">Category / Series</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Stock</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.id}>
+                    <td>{getProductIdLabel(product)}</td>
+                    <td>{product.name}</td>
+                    <td>
+                      {product.category}
+                      {product.series ? ` · ${product.series}` : ""}
+                    </td>
+                    <td>{formatCurrency(product.price)}</td>
+                    <td>{product.stock}</td>
+                    <td className="admin-row-actions">
+                      <button
+                        className="admin-button"
+                        type="button"
+                        onClick={() => editProduct(product)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="admin-button admin-button-danger"
+                        type="button"
+                        onClick={() => deleteProduct(product)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

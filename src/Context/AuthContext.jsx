@@ -1,75 +1,69 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { apiRequest } from "../utils/api";
 
 const AuthContext = createContext(null);
-const demoAccount = {
-  id: "demo-user",
-  name: "User",
-  email: "usertest@daffodil.com",
-  password: "usertest123",
-  role: "user"
-};
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() =>
-    JSON.parse(localStorage.getItem("user")) || null
-  );
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    const existingIndex = accounts.findIndex(
-      (account) =>
-        account.email?.toLowerCase() === demoAccount.email.toLowerCase()
-    );
+    let active = true;
+    apiRequest("/api/auth/me")
+      .then((result) => {
+        if (active) {
+          setUser(result.user);
+          setAuthError("");
+        }
+      })
+      .catch((error) => {
+        console.error("Unable to restore the server session.", error);
+        if (active) setAuthError(error.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-    if (existingIndex === -1) {
-      accounts.push(demoAccount);
-    } else {
-      accounts[existingIndex] = { ...accounts[existingIndex], ...demoAccount };
-    }
-
-    localStorage.setItem("accounts", JSON.stringify(accounts));
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const login = (account) => {
-    localStorage.setItem("user", JSON.stringify(account));
-    setUser(account);
+  const login = async (credentials) => {
+    const result = await apiRequest("/api/auth/login", {
+      method: "POST",
+      body: credentials
+    });
+    setUser(result.user);
+    setAuthError("");
+    return result.user;
   };
 
-  const updateProfile = (updates) => {
-    if (!user) return false;
-
-    const updatedUser = { ...user, ...updates };
-
-    try {
-      const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-      const accountIndex = accounts.findIndex(
-        (account) => account.email === user.email
-      );
-
-      if (accountIndex === -1) {
-        accounts.push(updatedUser);
-      } else {
-        accounts[accountIndex] = updatedUser;
-      }
-
-      localStorage.setItem("accounts", JSON.stringify(accounts));
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-    } catch (error) {
-      console.error("Unable to save profile updates.", error);
-      return false;
-    }
-
-    setUser(updatedUser);
+  const updateProfile = async (updates) => {
+    const result = await apiRequest("/api/auth/profile", {
+      method: "PATCH",
+      body: updates
+    });
+    setUser(result.user);
     return true;
   };
 
-  const logout = () => {
-    localStorage.removeItem("user");
+  const logout = async () => {
+    await apiRequest("/api/auth/logout", { method: "POST" });
     setUser(null);
+    setAuthError("");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      updateProfile,
+      loading,
+      authError
+    }}>
       {children}
     </AuthContext.Provider>
   );
