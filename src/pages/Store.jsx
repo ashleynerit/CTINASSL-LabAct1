@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import ProductCard from "../components/ProductCard";
+import { bookSeries, UNASSIGNED_SERIES } from "../Data/products";
 
 export default function Store({ products, addToCart }) {
   const [category, setCategory] = useState("All");
@@ -15,6 +16,15 @@ export default function Store({ products, addToCart }) {
 
     return matchesCategory && matchesSearch;
   });
+  const bookGroups = [...bookSeries, UNASSIGNED_SERIES]
+    .map((series) => ({
+      series,
+      products: filteredProducts.filter((product) =>
+        product.category === "Books" &&
+        (product.series || UNASSIGNED_SERIES) === series
+      )
+    }))
+    .filter((group) => !search || group.products.length > 0);
 
   return (
     <main className="section">
@@ -47,19 +57,46 @@ export default function Store({ products, addToCart }) {
         </div>
       </div>
 
-      <div className="product-grid">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              addToCart={addToCart}
-            />
-          ))
+      {category === "Books" ? (
+        bookGroups.length > 0 ? (
+          <div className="series-groups">
+            {bookGroups.map((group) => (
+              <section className="series-group" key={group.series}>
+                <h2>{group.series}</h2>
+                {group.products.length > 0 ? (
+                  <div className="product-grid">
+                    {group.products.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        addToCart={addToCart}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="series-empty">No books in this series yet.</p>
+                )}
+              </section>
+            ))}
+          </div>
         ) : (
-          <p>No products found.</p>
-        )}
-      </div>
+          <p>No books found.</p>
+        )
+      ) : (
+        <div className="product-grid">
+          {filteredProducts.length > 0 ? (
+            filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                addToCart={addToCart}
+              />
+            ))
+          ) : (
+            <p>No products found.</p>
+          )}
+        </div>
+      )}
     </main>
   );
 }

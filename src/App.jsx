@@ -1,104 +1,289 @@
-import { useEffect, useState } from "react";
+
+import { useState, useEffect } from "react";
+
 import {
   BrowserRouter,
+  Routes,
   Route,
-  Routes
+  Navigate,
+  useLocation
 } from "react-router-dom";
-import { initialProducts } from "./Data/products";
-import Footer from "./components/Footer";
-import About from "./pages/About";
-import Cart from "./pages/Cart";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Profile from "./pages/Profile";
-import Signup from "./pages/Signup";
-import Store from "./pages/Store";
-import AdminDashboard from "./pages/admin/Dashboard";
-import AdminProducts from "./pages/admin/Products";
+
+// =====================================
+// COMPONENTS
+// =====================================
+
 import { AdminNavbar, Navbar } from "./components/Navbar";
+import Footer from "./components/Footer";
+
+// =====================================
+// CUSTOMER PAGES
+// =====================================
+
+import Home from "./pages/Home";
+import Store from "./pages/Store";
+import About from "./pages/About";
+import Profile from "./pages/Profile";
+import Cart from "./pages/Cart";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+
+// =====================================
+// ADMIN PAGES
+// =====================================
+
+import Dashboard from "./pages/admin/Dashboard";
+import Products from "./pages/admin/Products";
+
+// =====================================
+// CONTEXT
+// =====================================
+
+import {
+  AuthProvider,
+  useAuth
+} from "./Context/AuthContext";
+
+import {
+  CartProvider,
+  useCart
+} from "./Context/CartContext";
+
+// =====================================
+// DATA
+// =====================================
+
+import { initialProducts } from "./Data/products.js";
+
+// =====================================
+// GLOBAL CSS
+// =====================================
+
 import "./index.css";
 
-function AppContent() {
-  const [products, setProducts] = useState(() =>
-    JSON.parse(localStorage.getItem("products")) || initialProducts
-  );
-  const [cart, setCart] = useState(() =>
-    JSON.parse(localStorage.getItem("cart")) || []
-  );
-  const [user, setUser] = useState(() =>
-    JSON.parse(localStorage.getItem("user")) || null
-  );
+// =====================================
+// APPLICATION LAYOUT
+// =====================================
 
+function AppLayout() {
+
+  const { user, logout } = useAuth();
+  const { cart, setCart, addToCart } = useCart();
+
+  const location = useLocation();
+
+  // Product management
+  const [products, setProducts] = useState(() => {
+
+    const savedProducts = localStorage.getItem("products");
+
+    return savedProducts
+      ? JSON.parse(savedProducts)
+      : initialProducts;
+
+  });
+
+  // Save products whenever they change
   useEffect(() => {
-    localStorage.setItem("products", JSON.stringify(products));
+
+    localStorage.setItem(
+      "products",
+      JSON.stringify(products)
+    );
+
   }, [products]);
 
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
-
-  const addToCart = (product) => {
-    setCart((previousCart) => {
-      const existingProduct = previousCart.find((item) => item.id === product.id);
-
-      if (existingProduct) {
-        return previousCart.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-
-      return [...previousCart, { ...product, quantity: 1 }];
-    });
-
-    alert("Product added to cart!");
-  };
-
-  const logout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
-  };
+  // Hide Navbar and Footer on authentication pages
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/signup";
 
   return (
-    <BrowserRouter>
-      {user && user.role === "admin" ? (
-        <AdminNavbar logout={logout} />
-      ) : (
-        <Navbar
-          cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-          user={user}
-          logout={logout}
-        />
+    <>
+
+      {/* =================================
+          NAVIGATION BAR
+      ================================= */}
+
+      {!isAuthPage && (
+
+        user?.role === "admin" ? (
+          <AdminNavbar logout={logout} />
+        ) : (
+          <Navbar
+            cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+            user={user}
+            logout={logout}
+          />
+        )
+
       )}
 
+      {/* =================================
+          APPLICATION ROUTES
+      ================================= */}
+
       <Routes>
-        <Route path="/" element={<Home products={products} />} />
+
+        {/* =================================
+            CUSTOMER PAGES
+        ================================= */}
+
+        <Route
+          path="/"
+          element={
+            <Home products={products} />
+          }
+        />
+
         <Route
           path="/store"
-          element={<Store products={products} addToCart={addToCart} />}
+          element={
+            <Store products={products} addToCart={addToCart} />
+          }
         />
-        <Route path="/about" element={<About />} />
-        <Route path="/profile" element={<Profile user={user} cart={cart} />} />
-        <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/admin" element={<AdminDashboard products={products} />} />
+
+        <Route
+          path="/about"
+          element={
+            <About />
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <Profile user={user} cart={cart} />
+          }
+        />
+
+        <Route
+          path="/cart"
+          element={
+            <Cart cart={cart} setCart={setCart} />
+          }
+        />
+
+        {/* =================================
+            AUTHENTICATION PAGES
+        ================================= */}
+
+        <Route
+          path="/login"
+          element={
+            user ? (
+              <Navigate
+                to={user.role === "admin" ? "/admin" : "/"}
+                replace
+              />
+            ) : (
+              <Login />
+            )
+          }
+        />
+
+        <Route
+          path="/signup"
+          element={
+            user ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Signup />
+            )
+          }
+        />
+
+        {/* =================================
+            ADMIN PAGES
+        ================================= */}
+
+        <Route
+          path="/admin"
+          element={
+            user?.role === "admin" ? (
+              <Dashboard products={products} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
         <Route
           path="/admin/products"
-          element={<AdminProducts products={products} setProducts={setProducts} />}
+          element={
+            user?.role === "admin" ? (
+              <Products
+                products={products}
+                setProducts={setProducts}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
+
         <Route
           path="/admin/inventory"
-          element={<AdminProducts products={products} setProducts={setProducts} />}
+          element={
+            user?.role === "admin" ? (
+              <Products
+                products={products}
+                setProducts={setProducts}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
+
+        {/* =================================
+            PAGE NOT FOUND
+        ================================= */}
+
+        <Route
+          path="*"
+          element={
+            <Navigate to="/" replace />
+          }
+        />
+
       </Routes>
 
-      <Footer />
-    </BrowserRouter>
+      {/* =================================
+          FOOTER
+      ================================= */}
+
+      {!isAuthPage && <Footer />}
+
+    </>
   );
+
 }
 
-export default function App() {
-  return <AppContent />;
+// =====================================
+// MAIN APP COMPONENT
+// =====================================
+
+function App() {
+
+  return (
+
+    <BrowserRouter>
+
+      <AuthProvider>
+
+        <CartProvider>
+
+          <AppLayout />
+
+        </CartProvider>
+
+      </AuthProvider>
+
+    </BrowserRouter>
+
+  );
+
 }
+
+export default App;

@@ -1,57 +1,103 @@
+
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 
-export default function Signup() {
+function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const navigate = useNavigate();
 
-  const signup = (event) => {
-    event.preventDefault();
+  const handleSignup = (e) => {
+    e.preventDefault();
 
-    const accounts = JSON.parse(localStorage.getItem("accounts")) || [];
+    const accounts = JSON.parse(
+      localStorage.getItem("accounts") || "[]"
+    );
 
-    if (accounts.some((account) => account.email === email)) {
+    const existingAccount = accounts.find(
+      account => account.email === email
+    );
+
+    if (existingAccount) {
       alert("Email is already registered.");
       return;
     }
 
-    accounts.push({ name, email, password, role: "user" });
-    localStorage.setItem("accounts", JSON.stringify(accounts));
+    const newAccount = {
+      id: Date.now(),
+      name,
+      email,
+      password,
+      role: "user"
+    };
+
+    accounts.push(newAccount);
+
+    localStorage.setItem(
+      "accounts",
+      JSON.stringify(accounts)
+    );
 
     alert("Account created successfully!");
+
     navigate("/login");
   };
 
   return (
-    <AuthLayout title="Create an Account" subtitle="Join the Agnified community">
-      <form onSubmit={signup}>
-        <input
-          placeholder="Full Name"
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email Address"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          minLength={8}
-        />
-        <button className="primary-btn full-btn">CREATE ACCOUNT</button>
+    <AuthLayout
+      title="Create account"
+      footerText="Already have an account?"
+      footerLink="/login"
+      footerLinkText="Log in"
+    >
+
+      <form onSubmit={handleSignup} className="auth-form">
+
+        <div className="form-group">
+          <label>Display name</label>
+
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Email</label>
+
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Password</label>
+
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+        </div>
+
+        <button type="submit" className="auth-submit-btn">
+          SIGN UP
+        </button>
+
       </form>
-      <p>Already have an account? <Link to="/login">Log In</Link></p>
+
     </AuthLayout>
   );
 }
+
+export default Signup;

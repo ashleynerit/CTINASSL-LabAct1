@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { bookSeries, UNASSIGNED_SERIES } from "../../Data/products";
 
 export default function AdminProducts({ products, setProducts }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [category, setCategory] = useState("Books");
+  const [series, setSeries] = useState("");
 
   const addProduct = (event) => {
     event.preventDefault();
@@ -15,6 +17,9 @@ export default function AdminProducts({ products, setProducts }) {
       price: Number(price),
       stock: Number(stock),
       category,
+      ...(category === "Books" && {
+        series: series || UNASSIGNED_SERIES
+      }),
       image: "https://placehold.co/400x500/F5EED8/497510?text=AGNIFIED"
     };
 
@@ -55,6 +60,21 @@ export default function AdminProducts({ products, setProducts }) {
           <option>Books</option>
           <option>Merchandise</option>
         </select>
+        {category === "Books" && (
+          <select
+            value={series}
+            onChange={(event) => setSeries(event.target.value)}
+            required
+          >
+            <option value="">Choose a series</option>
+            {bookSeries.map((bookSeriesName) => (
+              <option key={bookSeriesName} value={bookSeriesName}>
+                {bookSeriesName}
+              </option>
+            ))}
+            <option value={UNASSIGNED_SERIES}>{UNASSIGNED_SERIES}</option>
+          </select>
+        )}
         <button className="primary-btn">ADD PRODUCT</button>
       </form>
 
@@ -64,6 +84,9 @@ export default function AdminProducts({ products, setProducts }) {
         <div className="order-row" key={product.id}>
           <span>{product.name}</span>
           <span>{product.category}</span>
+          {product.category === "Books" && (
+            <span>{product.series || UNASSIGNED_SERIES}</span>
+          )}
           <span>₱{product.price}</span>
           <span>Stock: {product.stock}</span>
           <button onClick={() =>
